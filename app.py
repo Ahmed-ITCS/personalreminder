@@ -481,3 +481,15 @@ def register_cli(app: Flask) -> None:
         initialize_database(app.config["DATABASE_PATH"])
         click.echo(f"Database initialized at {app.config['DATABASE_PATH']}")
 
+
+_app: Flask | None = None
+
+
+def __getattr__(name: str):
+    global _app
+    if name == "app":
+        if _app is None:
+            _app = create_app()
+        return _app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+

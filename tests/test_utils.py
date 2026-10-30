@@ -44,6 +44,23 @@ def test_parse_tomorrow_and_absolute_times():
     assert due == expected
 
 
+def test_parse_clock_time_uses_next_occurrence():
+    due = parse_when("7:30 pm", "Asia/Karachi", now=_now())
+    expected = to_utc(datetime(2026, 10, 30, 19, 30), "Asia/Karachi")
+    assert due == expected
+
+    late = datetime(2026, 10, 30, 20, 0, tzinfo=ZoneInfo("Asia/Karachi"))
+    due = parse_when("7:30 pm", "Asia/Karachi", now=late)
+    expected = to_utc(datetime(2026, 10, 31, 19, 30), "Asia/Karachi")
+    assert due == expected
+
+
+def test_parse_24_hour_clock_time():
+    due = parse_when("7:30", "Asia/Karachi", now=_now())
+    expected = to_utc(datetime(2026, 10, 31, 7, 30), "Asia/Karachi")
+    assert due == expected
+
+
 def test_parse_rejects_bad_input():
     assert parse_when("sometime soon", "Asia/Karachi", now=_now()) is None
 

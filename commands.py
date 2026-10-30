@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from datetime import datetime
 
 from db import to_iso
 from reminders import cancel_reminder, create_reminder, get_reminder, list_reminders
@@ -15,10 +16,74 @@ def build_help(timezone_name: str) -> str:
         "- remind me in 2 hours to send the report\n"
         "- remind me tomorrow at 09:00 to submit the form\n"
         "- remind me at 2026-11-01 14:30 to attend the meeting\n"
+        "- add goto get milk at 7:30\n"
+        "- remind goto get milk at 7:30\n"
         "- list\n"
         "- cancel 12\n"
         f"- help\n\nTimes are interpreted in {timezone_name}."
     )
+
+
+def _schedule_reminder(
+    connection: sqlite3.Connection,
+    phone: str,
+    message: str,
+    due_at: datetime,
+    config: dict,
+    timezone_name: str,
+) -> str:
+    try:
+        reminder_id = create_reminder(
+            connection,
+            phone,
+            message,
+            due_at,
+            timezone_name,
+            max_message_length=config["MAX_REMINDER_MESSAGE_LENGTH"],
+        )
+    except ValueError as exc:
+        return str(exc)
+    return (
+        f"Reminder #{reminder_id} scheduled for "
+        f"{format_local(to_iso(due_at), timezone_name)} ({timezone_name}): {message}"
+    )
+
+
+def _split_add_alias(text: str) -> tuple[str, str] | None:
+    parts = re.split(r"\s+at\s+", text, flags=re.IGNORECASE)
+    if len(parts) >= 2:
+        when = parts[-1].strip()
+        message = " at ".join(parts[:-1]).strip()
+        day_match = re.search(r"\b(today|tomorrow)$", message, flags=re.IGNORECASE)
+        if day_match:
+            when = f"{day_match.group(1)} at {when}"
+            message = message[: day_match.start()].strip()
+        if message and when:
+            return message, when
+
+    match = re.fullmatch(
+        r"(?P<message>.+?)\s+in\s+"
+        r"(?P<when>\d+\s*(?:minutes?|mins?|m|hours?|hrs?|h|days?|d))",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        return match.group("message").strip(), f"in {match.group('when').strip()}"
+
+    match = re.fullmatch(
+        r"(?P<message>.+?)\s+"
+        r"(?:(?P<day>today|tomorrow)\s+)?"
+        r"(?P<when>\d{1,2}:\d{2}(?:\s*[ap]m)?)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        when = match.group("when").strip()
+        if match.group("day"):
+            when = f"{match.group('day')} {when}"
+        return match.group("message").strip(), when
+
+    return None
 
 
 def handle_incoming_message(
@@ -85,20 +150,41 @@ def handle_incoming_message(
                 "remind me in 30 minutes to call Ali, or "
                 "remind me tomorrow at 09:00 to send the report."
             )
-        try:
-            reminder_id = create_reminder(
+        return _schedule_reminder(
+            connection,
+            normalized_phone,
+            message,
+            due_at,
+            config,
+            timezone_name,
+        )
+
+    alias_match = re.match(
+        r"^(?:add|remind)\s+(?P<rest>.+)$",
+        body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if alias_match:
+        rest = alias_match.group("rest").strip()
+        rest = re.sub(r"^me\s+", "", rest, flags=re.IGNORECASE)
+        rest = re.sub(r"^to\s+", "", rest, flags=re.IGNORECASE)
+        parsed = _split_add_alias(rest)
+        if parsed is not None:
+            message, when_text = parsed
+            due_at = parse_when(when_text, timezone_name)
+            if due_at is None:
+                return (
+                    "I could not understand that time. Try: "
+                    "add goto get milk at 7:30, or "
+                    "remind goto get milk tomorrow at 09:00."
+                )
+            return _schedule_reminder(
                 connection,
                 normalized_phone,
                 message,
                 due_at,
+                config,
                 timezone_name,
-                max_message_length=config["MAX_REMINDER_MESSAGE_LENGTH"],
             )
-        except ValueError as exc:
-            return str(exc)
-        return (
-            f"Reminder #{reminder_id} scheduled for "
-            f"{format_local(to_iso(due_at), timezone_name)} ({timezone_name}): {message}"
-        )
 
     return "I did not understand that. Reply 'help' for available commands."

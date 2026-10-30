@@ -494,8 +494,12 @@ remind me in 10 minutes to call Ali
 remind me in 2 hours to send the report
 remind me tomorrow at 09:00 to submit the form
 remind me at 2026-11-01 14:30 to attend the meeting
+add goto get milk at 7:30
+remind goto get milk at 7:30
 ```
 
+`add` and `remind` accept one-line messages in the form `<message> at <time>`.
+A clock time without a date uses today, or tomorrow if that time has already passed.
 Reusing the same `data.id` returns `{"status":"duplicate"}` and does not create a
 second reminder.
 

@@ -108,7 +108,30 @@ def parse_when(
                 continue
         return None
 
+    time_only = _parse_time_only(rest, timezone_name, current)
+    if time_only is not None:
+        return time_only
+
     return parse_local_datetime(rest, timezone_name)
+
+
+def _parse_time_only(
+    text: str, timezone_name: str, now: datetime
+) -> datetime | None:
+    """Parse a clock time and use today, or tomorrow if it has already passed."""
+    tz = ZoneInfo(timezone_name)
+    current = now.astimezone(tz)
+    for fmt in ("%H:%M", "%H:%M:%S", "%I:%M %p", "%I %p"):
+        try:
+            candidate = text.upper() if "%p" in fmt else text
+            parsed_time = datetime.strptime(candidate, fmt).time()
+        except ValueError:
+            continue
+        due = datetime.combine(current.date(), parsed_time, tzinfo=tz)
+        if due <= current:
+            due += timedelta(days=1)
+        return due.astimezone(UTC)
+    return None
 
 
 def format_local(

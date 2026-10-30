@@ -8,6 +8,7 @@ import pytest
 from app import create_app
 from db import get_db, to_iso, utc_now
 from reminders import create_reminder
+from utils import format_local
 
 
 def _future_iso(hours: int = 2) -> str:
@@ -336,3 +337,41 @@ def test_webhook_failure_releases_deduplication_event(client, app, monkeypatch):
     assert retry.status_code == 200
     assert retry.get_json()["status"] == "ok"
     assert sent == [("923001234567", "Recovered")]
+
+
+def test_webhook_add_and_remind_aliases(client, app, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        "app.send_message",
+        lambda phone, body, config: sent.append((phone, body)) or {"sent": True},
+    )
+
+    messages = [
+        ("alias-1", "add goto get milk at 7:30 pm", "goto get milk"),
+        ("alias-2", "remind me to buy milk at 7:30 pm", "buy milk"),
+    ]
+    for message_id, body, expected in messages:
+        response = client.post(
+            "/webhook/ultramsg?token=hook-token",
+            json={
+                "event_type": "message_received",
+                "data": {
+                    "id": message_id,
+                    "from": "923001234567@c.us",
+                    "type": "chat",
+                    "body": body,
+                },
+            },
+        )
+        assert response.status_code == 200, response.get_data(as_text=True)
+        assert response.get_json()["reply_sent"] is True
+
+    with app.app_context():
+        rows = get_db().execute(
+            "SELECT message, due_at FROM reminders ORDER BY id"
+        ).fetchall()
+    assert [row["message"] for row in rows] == ["goto get milk", "buy milk"]
+    assert all(
+        "19:30" in format_local(row["due_at"], "Asia/Karachi") for row in rows
+    )
+    assert len(sent) == 2
