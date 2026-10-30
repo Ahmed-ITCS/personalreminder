@@ -1,0 +1,76 @@
+services:
+  # Web service owns the SQLite database on its persistent disk.
+  - type: web
+    name: ultramsg-reminders
+    runtime: python
+    plan: 0.5c-512mb
+    region: oregon
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 180 wsgi:application
+    healthCheckPath: /healthz
+    disk:
+      name: reminder-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.16"
+      - key: DATA_DIR
+        value: /var/data
+      - key: DATABASE_PATH
+        value: /var/data/reminders.sqlite3
+      - key: APP_TIMEZONE
+        value: Asia/Karachi
+      - key: TRUST_PROXY
+        value: "true"
+      - key: FORCE_HTTPS
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ULTRAMSG_INSTANCE_ID
+        sync: false
+      - key: ULTRAMSG_TOKEN
+        sync: false
+      - key: ULTRAMSG_WEBHOOK_TOKEN
+        generateValue: true
+      - key: DEFAULT_COUNTRY_CODE
+        value: "92"
+      - key: REMINDER_TASK_TOKEN
+        generateValue: true
+      - key: REMINDER_POLL_LIMIT
+        value: "10"
+      - key: REMINDER_MAX_ATTEMPTS
+        value: "6"
+      - key: REMINDER_RETRY_BASE_SECONDS
+        value: "300"
+      - key: REMINDER_STALE_SECONDS
+        value: "900"
+      - key: DASHBOARD_USERNAME
+        value: admin
+      - key: DASHBOARD_PASSWORD
+        generateValue: true
+
+  # Cron Jobs cannot attach a persistent disk on Render. This job calls an
+  # authenticated endpoint on the web service, which owns the SQLite file.
+  # Schedule is UTC; every 5 minutes is the recommended polling interval.
+  - type: cron
+    name: ultramsg-reminder-dispatcher
+    runtime: python
+    region: oregon
+    branch: main
+    autoDeployTrigger: commit
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_reminders.py --remote
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.16"
+      - key: REMINDER_TASK_URL
+        value: https://ultramsg-reminders.onrender.com/tasks/run-reminders
+      - key: REMINDER_TASK_TOKEN
+        fromService:
+          type: web
+          name: ultramsg-reminders
+          envVarKey: REMINDER_TASK_TOKEN

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Reminder Console{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand-group">
+        <a class="brand" href="{{ url_for('index') }}">Reminder Console</a>
+        <span class="tag">UltraMsg + SQLite</span>
+      </div>
+      <span class="muted">{{ timezone }}</span>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="muted footer">
+      Reminders are stored in SQLite on the persistent disk and delivered by the scheduled queue dispatcher.
+    </footer>
+  </div>
+</body>
+</html>

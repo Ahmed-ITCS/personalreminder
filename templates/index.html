@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Reminder Console{% endblock %}
+{% block content %}
+
+<section class="stats">
+  <div class="stat">
+    <span class="stat-label">Total</span>
+    <span class="stat-value">{{ total }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Pending</span>
+    <span class="stat-value">{{ counts.get('pending', 0) }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Sent</span>
+    <span class="stat-value">{{ counts.get('sent', 0) }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Failed</span>
+    <span class="stat-value">{{ counts.get('failed', 0) }}</span>
+  </div>
+</section>
+
+<div class="columns">
+  <section class="card">
+    <div class="card-head">
+      <h2>Schedule a reminder</h2>
+      <p class="muted">Times are interpreted in {{ timezone }}.</p>
+    </div>
+    <form class="stack" method="post" action="{{ url_for('create_reminder_route') }}">
+      <label>
+        WhatsApp number
+        <input type="tel" name="phone" placeholder="923001234567" required>
+        <span class="hint">Country code, digits only or with +.</span>
+      </label>
+      <label>
+        Message
+        <textarea name="message" rows="3" maxlength="1000" required placeholder="Call Ali about the project"></textarea>
+      </label>
+      <label>
+        Send at
+        <input type="datetime-local" name="due_at" required>
+      </label>
+      <button type="submit" class="button">Queue reminder</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>UltraMsg webhook</h2>
+      <p class="muted">Incoming messages are answered automatically.</p>
+    </div>
+    <p class="small">Set your UltraMsg incoming-message webhook to:</p>
+    <code class="code-block">{{ base_url }}/webhook/ultramsg?token=YOUR_WEBHOOK_TOKEN</code>
+    <ul class="notes">
+      <li>Use the <strong>ULTRAMSG_WEBHOOK_TOKEN</strong> value from your environment.</li>
+      <li>Incoming commands: <code>help</code>, <code>list</code>, <code>cancel 12</code>, <code>remind me in 10 minutes to call Ali</code>.</li>
+      <li>The dispatcher checks for due reminders every 5 minutes.</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head row">
+    <div>
+      <h2>Reminder queue</h2>
+      <p class="muted">Latest 100 reminders, newest first.</p>
+    </div>
+    <span class="tag">{{ timezone }}</span>
+  </div>
+
+  {% if reminders %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Recipient</th>
+          <th>Message</th>
+          <th>Due ({{ timezone }})</th>
+          <th>Status</th>
+          <th>Attempts</th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reminder in reminders %}
+        <tr>
+          <td class="mono">#{{ reminder['id'] }}</td>
+          <td class="mono">{{ reminder['phone'] }}</td>
+          <td class="message-cell" title="{{ reminder['message'] }}">{{ reminder['message'] }}</td>
+          <td>{{ reminder['due_at']|localtime }}</td>
+          <td>
+            <span class="badge badge-{{ reminder['status'] }}">{{ reminder['status'] }}</span>
+            {% if reminder['last_error'] %}
+              <span class="error-dot" title="{{ reminder['last_error'] }}">!</span>
+            {% endif %}
+          </td>
+          <td class="mono">{{ reminder['attempts'] }}</td>
+          <td class="actions-col">
+            {% if reminder['status'] in ('pending', 'failed') %}
+            <form method="post" action="{{ url_for('cancel_reminder_route', reminder_id=reminder['id']) }}">
+              <button type="submit" class="button button-ghost">Cancel</button>
+            </form>
+            {% endif %}
+            {% if reminder['status'] == 'failed' %}
+            <form method="post" action="{{ url_for('retry_reminder_route', reminder_id=reminder['id']) }}">
+              <button type="submit" class="button button-ghost">Retry</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No reminders yet.</p>
+    <p class="muted">Create one above, or send <code>remind me in 10 minutes to call Ali</code> on WhatsApp.</p>
+  </div>
+  {% endif %}
+</section>
+
+{% endblock %}
