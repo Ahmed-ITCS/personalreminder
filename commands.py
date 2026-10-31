@@ -11,7 +11,9 @@ from utils import format_local, normalize_phone, parse_when
 
 def build_help(timezone_name: str) -> str:
     return (
-        "Available commands:\n"
+        "*How to send commands*\n"
+        "Send one WhatsApp message to this number. Commands are not case-sensitive.\n\n"
+        "*Available commands*\n"
         "- remind me in 10 minutes to call Ali\n"
         "- remind me in 2 hours to send the report\n"
         "- remind me tomorrow at 09:00 to submit the form\n"
@@ -20,7 +22,10 @@ def build_help(timezone_name: str) -> str:
         "- remind goto get milk at 7:30\n"
         "- list\n"
         "- cancel 12\n"
-        f"- help\n\nTimes are interpreted in {timezone_name}."
+        "- help\n\n"
+        "*Formatting*\n"
+        "Use *bold* or _italic_ in reminder text. WhatsApp will render it.\n"
+        f"_Times are interpreted in {timezone_name}._"
     )
 
 
@@ -98,6 +103,10 @@ def handle_incoming_message(
         return None
     if len(body) > 2000:
         return "That message is too long. Please send a shorter command."
+    while len(body) >= 2 and body[0] == body[-1] and body[0] in "*_":
+        body = body[1:-1].strip()
+        if not body:
+            return None
 
     timezone_name = config["APP_TIMEZONE"]
     lowered = body.lower()

@@ -375,3 +375,30 @@ def test_webhook_add_and_remind_aliases(client, app, monkeypatch):
         "19:30" in format_local(row["due_at"], "Asia/Karachi") for row in rows
     )
     assert len(sent) == 2
+
+
+def test_formatted_commands_are_recognized(client, app, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        "app.send_message",
+        lambda phone, body, config: sent.append((phone, body)) or {"sent": True},
+    )
+
+    for message_id, body in [("format-1", "*help*"), ("format-2", "_list_")]:
+        response = client.post(
+            "/webhook/ultramsg?token=hook-token",
+            json={
+                "event_type": "message_received",
+                "data": {
+                    "id": message_id,
+                    "from": "923001234567@c.us",
+                    "type": "chat",
+                    "body": body,
+                },
+            },
+        )
+        assert response.status_code == 200, response.get_data(as_text=True)
+
+    assert "How to send commands" in sent[0][1]
+    assert "Formatting" in sent[0][1]
+    assert "no pending reminders" in sent[1][1].lower()

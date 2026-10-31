@@ -54,7 +54,10 @@
     <code class="code-block">{{ base_url }}/webhook/ultramsg?token=YOUR_WEBHOOK_TOKEN</code>
     <ul class="notes">
       <li>Use the <strong>ULTRAMSG_WEBHOOK_TOKEN</strong> value from your environment.</li>
+      <li><strong>How to send:</strong> WhatsApp the connected number with one command per message. Commands are not case-sensitive.</li>
       <li>Incoming commands: <code>help</code>, <code>list</code>, <code>cancel 12</code>, <code>remind me in 10 minutes to call Ali</code>.</li>
+      <li>One-line aliases: <code>add goto get milk at 7:30</code>, <code>remind goto get milk at 7:30</code>.</li>
+      <li><strong>Formatting:</strong> use <code>*bold*</code> or <code>_italic_</code> in reminder text; WhatsApp renders it, e.g. <code>add *buy milk* at 7:30</code>.</li>
       <li>The dispatcher checks for due reminders every 5 minutes.</li>
     </ul>
   </section>
@@ -117,7 +120,7 @@
   {% else %}
   <div class="empty-state">
     <p>No reminders yet.</p>
-    <p class="muted">Create one above, or send <code>remind me in 10 minutes to call Ali</code> on WhatsApp.</p>
+    <p class="muted">Create one above, or send <code>add goto get milk at 7:30</code> on WhatsApp.</p>
   </div>
   {% endif %}
 </section>

@@ -500,6 +500,9 @@ remind goto get milk at 7:30
 
 `add` and `remind` accept one-line messages in the form `<message> at <time>`.
 A clock time without a date uses today, or tomorrow if that time has already passed.
+Send one command per WhatsApp message; commands are not case-sensitive. Reminder
+text supports WhatsApp formatting, for example `add *buy milk* at 7:30` or
+`remind _call family_ at 10:00`.
 Reusing the same `data.id` returns `{"status":"duplicate"}` and does not create a
 second reminder.
 
