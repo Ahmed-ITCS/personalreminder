@@ -38,6 +38,18 @@ def phone_from_chat_id(value: object, default_country_code: str = "92") -> str:
     return normalize_phone(chat_id, default_country_code)
 
 
+def normalize_chat_id(value: object, default_country_code: str = "92") -> str:
+    """Return an UltraMsg chat id: phone digits for people, <id>@g.us for groups."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if is_group_chat_id(raw):
+        local = raw.split("@", 1)[0].split(":", 1)[0]
+        digits = re.sub(r"\D", "", local)
+        return f"{digits}@g.us" if digits else ""
+    return normalize_phone(raw, default_country_code)
+
+
 def local_now(timezone_name: str) -> datetime:
     return datetime.now(ZoneInfo(timezone_name))
 

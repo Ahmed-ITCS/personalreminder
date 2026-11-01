@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from utils import (
     format_local,
     is_group_chat_id,
+    normalize_chat_id,
     normalize_phone,
     parse_when,
     phone_from_chat_id,
@@ -32,6 +33,12 @@ def test_is_group_chat_id():
     assert is_group_chat_id("923001234567@c.us") is False
     assert is_group_chat_id("923001234567:12@c.us") is False
     assert is_group_chat_id("") is False
+
+
+def test_normalize_chat_id():
+    assert normalize_chat_id("120363351693927930@g.us") == "120363351693927930@g.us"
+    assert normalize_chat_id("120363351693927930@c.us") == "120363351693927930@g.us"
+    assert normalize_chat_id("+92 300 1234567") == "923001234567"
 
 
 def test_parse_relative_times():

@@ -189,8 +189,13 @@ def _parse_webhook_payload(payload: object) -> dict | None:
         or is_group_chat_id(author_raw)
         or bool(str(author_raw or "").strip())
     )
-    sender_raw = author_raw if is_group else chat_raw
-    if not sender_raw or is_group_chat_id(sender_raw):
+    if is_group:
+        sender_raw = author_raw
+        reply_raw = chat_raw or author_raw
+    else:
+        sender_raw = chat_raw
+        reply_raw = chat_raw
+    if not sender_raw or not reply_raw or is_group_chat_id(sender_raw):
         return None
 
     message_type = str(
@@ -211,6 +216,7 @@ def _parse_webhook_payload(payload: object) -> dict | None:
         "event_type": event_type or "message_received",
         "event_id": str(event_id) if event_id else "",
         "sender": str(sender_raw),
+        "reply_to": str(reply_raw),
         "body": body,
     }
 
@@ -429,10 +435,12 @@ def register_routes(app: Flask) -> None:
         reply_sent = False
         if reply:
             try:
-                send_message(sender, reply, app.config)
+                send_message(message["reply_to"], reply, app.config)
                 reply_sent = True
             except UltraMsgError as exc:
-                app.logger.error("Could not send webhook reply to %s: %s", sender, exc)
+                app.logger.error(
+                    "Could not send webhook reply to %s: %s", message["reply_to"], exc
+                )
 
         return jsonify({"status": "ok", "reply_sent": reply_sent})
 

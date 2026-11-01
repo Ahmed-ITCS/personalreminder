@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import requests
 
-from utils import normalize_phone
+from utils import normalize_chat_id
 
 
 class UltraMsgError(RuntimeError):
@@ -15,10 +15,13 @@ def send_message(phone: str, body: str, config: dict) -> dict:
     if not instance_id or not token:
         raise UltraMsgError("ULTRAMSG_INSTANCE_ID and ULTRAMSG_TOKEN are not configured")
 
-    recipient = normalize_phone(phone, config.get("DEFAULT_COUNTRY_CODE", "92"))
+    recipient = normalize_chat_id(phone, config.get("DEFAULT_COUNTRY_CODE", "92"))
     if not recipient:
         raise UltraMsgError("Recipient phone number is empty")
-    if not 8 <= len(recipient) <= 15:
+    if recipient.endswith("@g.us"):
+        if len(recipient.removesuffix("@g.us")) < 8:
+            raise UltraMsgError(f"Recipient group id is invalid: {recipient}")
+    elif not 8 <= len(recipient) <= 15:
         raise UltraMsgError(
             f"Recipient is not a valid phone number: {recipient}"
         )

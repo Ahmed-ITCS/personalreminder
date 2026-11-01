@@ -99,7 +99,7 @@ def test_webhook_creates_reminder_and_replies(client, app, monkeypatch):
     )
     assert response.status_code == 200, response.get_data(as_text=True)
     assert response.get_json()["reply_sent"] is True
-    assert sent and sent[0][0] == "923001234567"
+    assert sent and sent[0][0] == "923001234567@c.us"
     assert "Reminder #" in sent[0][1]
 
     with app.app_context():
@@ -118,7 +118,7 @@ def test_webhook_creates_reminder_and_replies(client, app, monkeypatch):
     assert count == 1
 
 
-def test_webhook_group_message_replies_to_author(client, app, monkeypatch):
+def test_webhook_group_message_replies_in_group(client, app, monkeypatch):
     sent = []
     monkeypatch.setattr(
         "app.send_message",
@@ -138,7 +138,30 @@ def test_webhook_group_message_replies_to_author(client, app, monkeypatch):
     response = client.post("/webhook/ultramsg?token=hook-token", json=payload)
     assert response.status_code == 200, response.get_data(as_text=True)
     assert response.get_json()["reply_sent"] is True
-    assert sent and sent[0][0] == "923001234567"
+    assert sent and sent[0][0] == "120363351693927930@g.us"
+
+
+def test_webhook_bare_group_id_is_replied_to(client, app, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        "app.send_message",
+        lambda phone, body, config: sent.append((phone, body)) or {"sent": True},
+    )
+
+    payload = {
+        "event_type": "message_received",
+        "data": {
+            "id": "group-message-3",
+            "from": "120363351693927930@c.us",
+            "author": "923001234567@c.us",
+            "type": "chat",
+            "body": "help",
+        },
+    }
+    response = client.post("/webhook/ultramsg?token=hook-token", json=payload)
+    assert response.status_code == 200, response.get_data(as_text=True)
+    assert response.get_json()["reply_sent"] is True
+    assert sent and sent[0][0] == "120363351693927930@c.us"
 
 
 def test_webhook_group_without_author_is_ignored(client, app, monkeypatch):
@@ -381,7 +404,7 @@ def test_webhook_failure_releases_deduplication_event(client, app, monkeypatch):
     retry = client.post("/webhook/ultramsg?token=hook-token", json=payload)
     assert retry.status_code == 200
     assert retry.get_json()["status"] == "ok"
-    assert sent == [("923001234567", "Recovered")]
+    assert sent == [("923001234567@c.us", "Recovered")]
 
 
 def test_webhook_add_and_remind_aliases(client, app, monkeypatch):
