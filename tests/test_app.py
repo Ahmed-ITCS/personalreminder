@@ -118,6 +118,51 @@ def test_webhook_creates_reminder_and_replies(client, app, monkeypatch):
     assert count == 1
 
 
+def test_webhook_group_message_replies_to_author(client, app, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        "app.send_message",
+        lambda phone, body, config: sent.append((phone, body)) or {"sent": True},
+    )
+
+    payload = {
+        "event_type": "message_received",
+        "data": {
+            "id": "group-message-1",
+            "from": "120363351693927930@g.us",
+            "author": "923001234567@c.us",
+            "type": "chat",
+            "body": "help",
+        },
+    }
+    response = client.post("/webhook/ultramsg?token=hook-token", json=payload)
+    assert response.status_code == 200, response.get_data(as_text=True)
+    assert response.get_json()["reply_sent"] is True
+    assert sent and sent[0][0] == "923001234567"
+
+
+def test_webhook_group_without_author_is_ignored(client, app, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        "app.send_message",
+        lambda phone, body, config: sent.append((phone, body)) or {"sent": True},
+    )
+
+    payload = {
+        "event_type": "message_received",
+        "data": {
+            "id": "group-message-2",
+            "from": "120363351693927930@c.us",
+            "type": "chat",
+            "body": "help",
+        },
+    }
+    response = client.post("/webhook/ultramsg?token=hook-token", json=payload)
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "ignored"
+    assert sent == []
+
+
 def test_webhook_rejects_invalid_token(client):
     response = client.post(
         "/webhook/ultramsg?token=wrong",

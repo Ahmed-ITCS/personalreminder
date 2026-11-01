@@ -18,6 +18,10 @@ def send_message(phone: str, body: str, config: dict) -> dict:
     recipient = normalize_phone(phone, config.get("DEFAULT_COUNTRY_CODE", "92"))
     if not recipient:
         raise UltraMsgError("Recipient phone number is empty")
+    if not 8 <= len(recipient) <= 15:
+        raise UltraMsgError(
+            f"Recipient is not a valid phone number: {recipient}"
+        )
 
     api_url = (config.get("ULTRAMSG_API_URL") or "https://api.ultramsg.com").rstrip("/")
     url = f"{api_url}/{instance_id}/messages/chat"

@@ -4,6 +4,20 @@ import re
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+MAX_PHONE_DIGITS = 15
+
+
+def is_group_chat_id(value: object) -> bool:
+    """Return True when a WhatsApp chat id refers to a group, not a person."""
+    raw = str(value or "").strip()
+    if not raw:
+        return False
+    if "@g.us" in raw.lower():
+        return True
+    local = raw.split("@", 1)[0].split(":", 1)[0]
+    digits = re.sub(r"\D", "", local)
+    return len(digits) > MAX_PHONE_DIGITS
+
 
 def normalize_phone(value: object, default_country_code: str = "92") -> str:
     """Return digits only, converting local numbers that start with 0."""

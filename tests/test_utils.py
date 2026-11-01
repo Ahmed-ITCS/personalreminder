@@ -3,7 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from utils import format_local, normalize_phone, parse_when, phone_from_chat_id, to_utc
+from utils import (
+    format_local,
+    is_group_chat_id,
+    normalize_phone,
+    parse_when,
+    phone_from_chat_id,
+    to_utc,
+)
 
 
 def _now():
@@ -17,6 +24,14 @@ def test_normalize_phone_variants():
     assert normalize_phone("923001234567@c.us") == "923001234567"
     assert normalize_phone("") == ""
     assert phone_from_chat_id("923001234567:12@c.us") == "923001234567"
+
+
+def test_is_group_chat_id():
+    assert is_group_chat_id("120363351693927930@g.us") is True
+    assert is_group_chat_id("120363351693927930@c.us") is True
+    assert is_group_chat_id("923001234567@c.us") is False
+    assert is_group_chat_id("923001234567:12@c.us") is False
+    assert is_group_chat_id("") is False
 
 
 def test_parse_relative_times():

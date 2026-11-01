@@ -37,6 +37,7 @@ from reminders import (
 from ultramsg import UltraMsgError, send_message
 from utils import (
     format_local,
+    is_group_chat_id,
     parse_local_datetime,
     phone_from_chat_id,
     to_utc,
@@ -180,8 +181,16 @@ def _parse_webhook_payload(payload: object) -> dict | None:
     if _truthy(data.get("fromMe") or data.get("from_me")):
         return None
 
-    sender_raw = data.get("from") or data.get("author") or data.get("chatId")
-    if not sender_raw or "@g.us" in str(sender_raw):
+    chat_raw = data.get("from") or data.get("chatId") or data.get("chat_id")
+    author_raw = data.get("author") or data.get("participant")
+    is_group = (
+        _truthy(data.get("isGroup") or data.get("is_group"))
+        or is_group_chat_id(chat_raw)
+        or is_group_chat_id(author_raw)
+        or bool(str(author_raw or "").strip())
+    )
+    sender_raw = author_raw if is_group else chat_raw
+    if not sender_raw or is_group_chat_id(sender_raw):
         return None
 
     message_type = str(
